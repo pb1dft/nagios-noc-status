@@ -117,16 +117,6 @@ See [INSTALL.md](docs/INSTALL.md) for the complete setup procedure.
 
 The dashboard should be served over HTTPS in production.
 
-Do not commit:
-
-- Nagios password files
-- passwords
-- API tokens
-- private keys
-- TLS private keys
-- production `.env` files
-- other deployment secrets
-
 The Nagios command file must not be located inside the web document root.
 
 The web server user needs the minimum permissions required to access the Nagios status information and submit external commands.
