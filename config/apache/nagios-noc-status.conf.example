@@ -1,0 +1,33 @@
+<VirtualHost *:80>
+    ServerName noc.example.com
+
+    DocumentRoot /var/www/nagios-noc-status
+
+    <Directory /var/www/nagios-noc-status>
+        Options -Indexes
+        AllowOverride None
+
+        AuthType Basic
+        AuthName "Nagios NOC"
+        AuthUserFile /etc/nagios/htpasswd.users
+        Require valid-user
+    </Directory>
+
+    <Directory /var/www/nagios-noc-status/api>
+        Options -Indexes
+        AllowOverride None
+
+        AuthType Basic
+        AuthName "Nagios NOC"
+        AuthUserFile /etc/nagios/htpasswd.users
+        Require valid-user
+    </Directory>
+
+    # Never allow Apache to serve the htpasswd file itself
+    <FilesMatch "^\.ht">
+        Require all denied
+    </FilesMatch>
+
+    ErrorLog ${APACHE_LOG_DIR}/nagios-noc-status-error.log
+    CustomLog ${APACHE_LOG_DIR}/nagios-noc-status-access.log combined
+</VirtualHost>

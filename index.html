@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>NOC Status</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        :root {
+            --noc-bg: #0b0f14;
+            --noc-panel: #11161d;
+            --noc-panel-header: #171d25;
+            --noc-border: #28313b;
+            --noc-text: #e8edf2;
+            --noc-muted: #8d98a5;
+            --noc-green: #20c997;
+            --noc-red: #ff4d5a;
+            --noc-orange: #ffad42;
+            --noc-purple: #a970ff;
+            --noc-table-row: #11161d;
+            --noc-table-row-alt: #0e1319;
+            --noc-table-hover: #1a222c;
+        }
+
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            background: var(--noc-bg);
+            color: var(--noc-text);
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        body {
+            overflow: hidden;
+        }
+
+        .noc-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 18px 22px 14px;
+            gap: 16px;
+        }
+
+        .noc-title {
+            font-size: clamp(16px, 1.2vw, 22px);
+            font-weight: 700;
+            letter-spacing: .04em;
+            color: #fff;
+        }
+
+        .noc-title .infra {
+            color: var(--noc-green);
+        }
+
+        .totals-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            flex-shrink: 0;
+        }
+
+        .noc-card {
+            background: var(--noc-panel);
+            border: 1px solid var(--noc-border);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .card-header {
+            background: var(--noc-panel-header);
+            border-bottom: 1px solid var(--noc-border);
+            padding: 9px 13px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-title {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: #aeb8c3;
+        }
+
+        .card-total {
+            font-size: 11px;
+            color: var(--noc-muted);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            padding: 10px;
+            gap: 9px;
+        }
+
+        .status-grid.services {
+            grid-template-columns: repeat(5, 1fr);
+        }
+
+        .status-tile {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 74px;
+            background: #0d1218;
+            border: 1px solid var(--noc-border);
+            border-radius: 5px;
+            text-decoration: none;
+            color: inherit;
+            transition: background .15s, border-color .15s;
+        }
+
+        .status-tile:hover {
+            background: #151c24;
+            border-color: #3a4652;
+        }
+
+        .status-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            color: var(--noc-muted);
+            margin-bottom: 4px;
+        }
+
+        .status-value {
+            font-size: clamp(22px, 2vw, 34px);
+            line-height: 1;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .value-up,
+        .value-ok {
+            color: var(--noc-green);
+        }
+
+        .value-down,
+        .value-critical {
+            color: var(--noc-red);
+        }
+
+        .value-unreachable,
+        .value-warning {
+            color: var(--noc-orange);
+        }
+
+        .value-unknown {
+            color: var(--noc-purple);
+        }
+
+        .value-pending {
+            color: #b5bec8;
+        }
+
+        .value-zero {
+            color: #68737e !important;
+        }
+
+        .problems-panel {
+            background: var(--noc-panel);
+            border: 1px solid var(--noc-border);
+            border-radius: 6px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            flex: 1;
+        }
+
+        .problems-header {
+            background: var(--noc-panel-header);
+            border-bottom: 1px solid var(--noc-border);
+            padding: 9px 13px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .problems-title {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: #aeb8c3;
+        }
+
+        .problems-header-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .problem-count {
+            font-size: 10px;
+            font-weight: 700;
+            color: #c2cbd4;
+            background: #252e38;
+            border: 1px solid #36414c;
+            border-radius: 10px;
+            padding: 2px 7px;
+            min-width: 24px;
+            text-align: center;
+        }
+
+        .btn-login,
+        .auth-user {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .btn-login {
+            color: #a9f3dd;
+            background: rgba(32, 201, 151, .08);
+            border: 1px solid rgba(32, 201, 151, .3);
+            text-decoration: none;
+        }
+
+        .btn-login:hover {
+            background: rgba(32, 201, 151, .15);
+            color: #fff;
+        }
+
+        .auth-user {
+            color: #9aa7b4;
+            background: #1a222c;
+            border: 1px solid #303b47;
+        }
+
+        .table-container {
+            overflow: auto;
+            min-height: 0;
+            flex: 1;
+            background: var(--noc-panel);
+        }
+
+        .noc-table,
+        .noc-table.table {
+            --bs-table-bg: transparent;
+            --bs-table-color: var(--noc-text);
+            --bs-table-border-color: #202832;
+            --bs-table-striped-bg: transparent;
+            --bs-table-striped-color: var(--noc-text);
+            --bs-table-hover-bg: var(--noc-table-hover);
+            --bs-table-hover-color: var(--noc-text);
+            width: 100%;
+            margin: 0 !important;
+            border-collapse: collapse;
+            color: var(--noc-text) !important;
+            background: var(--noc-panel) !important;
+            font-size: 11px;
+        }
+
+        .noc-table > thead,
+        .noc-table > tbody,
+        .noc-table > tr {
+            background: transparent !important;
+        }
+
+        .noc-table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            background: #151b23 !important;
+            color: #7f8b98 !important;
+            border-bottom: 1px solid var(--noc-border) !important;
+            padding: 7px 9px !important;
+            font-size: 9px !important;
+            font-weight: 700 !important;
+            letter-spacing: .07em;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .noc-table tbody tr,
+        .noc-table tbody tr:nth-child(even),
+        .noc-table tbody tr:nth-child(odd) {
+            background: var(--noc-table-row) !important;
+            border-bottom: 1px solid #202832 !important;
+            color: var(--noc-text) !important;
+        }
+
+        .noc-table tbody tr:nth-child(even) {
+            background: var(--noc-table-row-alt) !important;
+        }
+
+        .noc-table tbody tr:hover {
+            background: var(--noc-table-hover) !important;
+        }
+
+        .noc-table td {
+            padding: 7px 9px !important;
+            border: 0 !important;
+            vertical-align: middle;
+            color: #c5cdd5 !important;
+            background: transparent !important;
+        }
+
+        .noc-table .host-cell {
+            font-weight: 600;
+            color: #e1e6eb !important;
+            white-space: nowrap;
+        }
+
+        .noc-table .service-cell {
+            color: #aeb8c3 !important;
+            white-space: nowrap;
+        }
+
+        .noc-table .message-cell {
+            color: #aeb8c3 !important;
+            max-width: 420px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .noc-table .time-cell {
+            white-space: nowrap;
+            color: #788490 !important;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .action-cell {
+            white-space: nowrap;
+        }
+
+        .badge-noc {
+            display: inline-block;
+            padding: 3px 6px;
+            border-radius: 3px;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: .04em;
+            line-height: 1;
+        }
+
+        .badge-host,
+        .badge-service {
+            color: #aeb8c3;
+            background: #252d36;
+            border: 1px solid #343e48;
+        }
+
+        .badge-critical,
+        .badge-down {
+            color: #ffb0b6;
+            background: rgba(255, 77, 90, .11);
+            border: 1px solid rgba(255, 77, 90, .25);
+        }
+
+        .badge-warning,
+        .badge-unreachable {
+            color: #ffd39a;
+            background: rgba(255, 173, 66, .10);
+            border: 1px solid rgba(255, 173, 66, .25);
+        }
+
+        .badge-unknown {
+            color: #d2b8ff;
+            background: rgba(169, 112, 255, .10);
+            border: 1px solid rgba(169, 112, 255, .25);
+        }
+
+        .badge-soft {
+            color: #ffd39a;
+            background: rgba(255, 173, 66, .10);
+            border: 1px solid rgba(255, 173, 66, .25);
+        }
+
+        .badge-hard {
+            color: #ffb0b6;
+            background: rgba(255, 77, 90, .11);
+            border: 1px solid rgba(255, 77, 90, .25);
+        }
+
+        .btn-ack {
+            color: #ffd0d4;
+            background: rgba(255, 77, 90, .10);
+            border: 1px solid rgba(255, 77, 90, .30);
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: .04em;
+            padding: 4px 7px;
+            border-radius: 4px;
+        }
+
+        .btn-ack:hover {
+            color: #fff;
+            background: rgba(255, 77, 90, .20);
+        }
+
+        .empty-state {
+            height: 100%;
+            min-height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 5px;
+            color: #71808d;
+        }
+
+        .empty-icon {
+            font-size: 22px;
+            color: var(--noc-green);
+        }
+
+        .empty-text {
+            font-size: 11px;
+        }
+
+        .connection-status {
+            position: fixed;
+            right: 22px;
+            bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 9px;
+            color: #687580;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            pointer-events: none;
+        }
+
+        .connection-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--noc-green);
+            box-shadow: 0 0 7px rgba(32, 201, 151, .5);
+        }
+
+        .connection-dot.warning {
+            background: var(--noc-orange);
+            box-shadow: 0 0 7px rgba(255, 77, 90, .5);
+        }
+
+        .connection-dot.error {
+            background: var(--noc-red);
+            box-shadow: 0 0 7px rgba(255, 77, 90, .5);
+        }
+
+        .noc-modal {
+            background: #11161d;
+            color: #e8edf2;
+            border: 1px solid #28313b;
+        }
+
+        .noc-modal .modal-header,
+        .noc-modal .modal-footer {
+            border-color: #28313b;
+        }
+
+        .noc-modal .btn-close {
+            filter: invert(1) grayscale(100%);
+            opacity: .8;
+        }
+
+        .noc-modal .modal-title {
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .noc-modal .form-label {
+            color: #aeb8c3;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+        }
+
+        .noc-modal .form-control {
+            background: #0d1218;
+            color: #e8edf2;
+            border: 1px solid #36414d;
+            font-size: 12px;
+        }
+
+        .noc-modal .form-control:focus {
+            background: #0d1218;
+            color: #e8edf2;
+            border-color: #4a5968;
+            box-shadow: 0 0 0 .15rem rgba(32, 201, 151, .12);
+        }
+
+        .noc-modal .form-check-label {
+            color: #aeb8c3;
+            font-size: 11px;
+            cursor: pointer;
+        }
+
+        .noc-modal .form-check-input {
+            background-color: #0d1218;
+            border-color: #36414d;
+        }
+
+        .noc-modal .form-check-input:checked {
+            background-color: var(--noc-green);
+            border-color: var(--noc-green);
+        }
+
+        .ack-target {
+            color: #f0f3f6;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .ack-problem {
+            margin: 6px 0 14px;
+            color: #8995a1;
+            font-size: 12px;
+        }
+
+        .ack-error {
+            margin-top: 10px;
+            color: #ff9fa8;
+            font-size: 12px;
+        }
+
+        .btn-cancel {
+            color: #b7c1cb;
+            background: #1a222c;
+            border: 1px solid #36414d;
+        }
+
+        .btn-ack-submit {
+            color: #fff;
+            background: #b93442;
+            border: 1px solid #d14a57;
+            font-weight: 700;
+        }
+
+        .btn-ack-submit:disabled {
+            opacity: .6;
+        }
+
+        @media (max-width: 1100px) {
+            .totals-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 750px) {
+            .noc-container {
+                padding: 12px;
+                gap: 10px;
+            }
+
+            .status-grid,
+            .status-grid.services {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .noc-table {
+                font-size: 10px;
+            }
+
+            .message-cell {
+                max-width: 240px;
+            }
+        }
+
+        @media (max-width: 500px) {
+            .noc-container {
+                padding: 9px;
+            }
+
+            .problems-header {
+                padding: 8px 9px;
+            }
+
+            .noc-table thead th,
+            .noc-table td {
+                padding: 6px !important;
+            }
+
+            .noc-table .message-cell {
+                max-width: 160px;
+            }
+        }
+
+        @media (min-width: 1800px) {
+            .noc-container {
+                padding: 22px 28px 16px;
+                gap: 18px;
+            }
+
+            .status-tile {
+                min-height: 86px;
+            }
+
+            .noc-table {
+                font-size: 12px;
+            }
+
+            .noc-table thead th {
+                font-size: 10px !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="noc-container">
+        <!-- Page title -->
+        <div class="noc-title"><span class="infra">INFRA</span> @ <span id="hostname">—</span></div>
+
+        <!-- Host and service summary cards -->
+        <div class="totals-row">
+            <!-- Hosts -->
+            <div class="noc-card">
+                <div class="card-header">
+                    <div class="card-title">Hosts</div>
+                    <div class="card-total" id="host-total">0</div>
+                </div>
+
+                <div class="status-grid">
+                    <a class="status-tile" id="host-up-link" href="#" target="_blank"><span class="status-label">Up</span><span class="status-value value-up" id="host-up">0</span></a>
+                    <a class="status-tile" id="host-down-link" href="#" target="_blank"><span class="status-label">Down</span><span class="status-value value-down" id="host-down">0</span></a>
+                    <a class="status-tile" id="host-unreachable-link" href="#" target="_blank"><span class="status-label">Unreachable</span><span class="status-value value-unreachable" id="host-unreachable">0</span></a>
+                    <a class="status-tile" id="host-pending-link" href="#" target="_blank"><span class="status-label">Pending</span><span class="status-value value-pending" id="host-pending">0</span></a>
+                </div>
+            </div>
+
+            <!-- Services -->
+            <div class="noc-card">
+                <div class="card-header">
+                    <div class="card-title">Services</div>
+                    <div class="card-total" id="service-total">0</div>
+                </div>
+
+                <div class="status-grid services">
+                    <a class="status-tile" id="service-ok-link" href="#" target="_blank"><span class="status-label">OK</span><span class="status-value value-ok" id="service-ok">0</span></a>
+                    <a class="status-tile" id="service-warning-link" href="#" target="_blank"><span class="status-label">Warning</span><span class="status-value value-warning" id="service-warning">0</span></a>
+                    <a class="status-tile" id="service-unknown-link" href="#" target="_blank"><span class="status-label">Unknown</span><span class="status-value value-unknown" id="service-unknown">0</span></a>
+                    <a class="status-tile" id="service-critical-link" href="#" target="_blank"><span class="status-label">Critical</span><span class="status-value value-critical" id="service-critical">0</span></a>
+                    <a class="status-tile" id="service-pending-link" href="#" target="_blank"><span class="status-label">Pending</span><span class="status-value value-pending" id="service-pending">0</span></a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Unhandled problems panel -->
+        <div class="problems-panel">
+            <div class="problems-header">
+                <div class="problems-title">Unhandled Problems</div>
+
+                <div class="problems-header-right">
+                    <a id="login-button" class="btn-login" href="/api/noc-auth/">LOGIN</a>
+                    <span id="auth-user" class="auth-user d-none"></span>
+                    <div id="problem-count" class="problem-count">0</div>
+                </div>
+            </div>
+
+            <!-- Problems table is inserted here by JavaScript -->
+            <div class="table-container" id="problems-container">
+                <div class="empty-state">
+                    <div class="empty-icon">✓</div>
+                    <div class="empty-text">No unhandled problems</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Connection status -->
+    <div class="connection-status">
+        <span id="connection-dot" class="connection-dot warning"></span>
+        <span id="connection-text">Connecting</span>
+    </div>
+
+    <!-- Acknowledge problem modal -->
+    <div class="modal fade" id="ackModal" tabindex="-1" aria-labelledby="ackModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content noc-modal">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="ackModalLabel">Acknowledge Problem</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div id="ack-target" class="ack-target"></div>
+                    <div id="ack-problem" class="ack-problem"></div>
+
+                    <label for="ack-comment" class="form-label">Comment</label>
+                    <textarea id="ack-comment" class="form-control" rows="4" maxlength="1000" placeholder="Enter acknowledgement comment..."></textarea>
+
+                    <div class="form-check mt-3">
+                        <input class="form-check-input" type="checkbox" id="ack-persistent">
+                        <label class="form-check-label" for="ack-persistent">Persistent acknowledgement</label>
+                    </div>
+
+                    <div id="ack-error" class="ack-error d-none"></div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-cancel" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" id="ack-submit" class="btn btn-ack-submit">Acknowledge</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        /* ============================================================
+           API CONFIGURATION
+           ============================================================ */
+
+        const API_URL = '/api/noc-status/';
+        const AUTH_URL = '/api/noc-auth/';
+        const ACK_URL = '/api/noc-ack/';
+        const NAGIOS_URL = '/nagios/cgi-bin/status.cgi';
+
+
+        /* ============================================================
+           APPLICATION STATE
+           ============================================================ */
+
+        let isAuthenticated = false;
+        let authenticatedUsername = '';
+        let currentProblems = [];
+        let ackContext = null;
+        let ackModal = null;
+
+
+        /* ============================================================
+           NAGIOS FILTER LINKS
+           ============================================================ */
+
+        const hostLinks = {
+            up: `${NAGIOS_URL}?hostgroup=all&style=hostdetail&hoststatustypes=2`,
+            down: `${NAGIOS_URL}?hostgroup=all&style=hostdetail&hoststatustypes=4`,
+            unreachable: `${NAGIOS_URL}?hostgroup=all&style=hostdetail&hoststatustypes=8`,
+            pending: `${NAGIOS_URL}?hostgroup=all&style=hostdetail&hoststatustypes=1`
+        };
+
+        const serviceLinks = {
+            ok: `${NAGIOS_URL}?host=all&servicestatustypes=2&hoststatustypes=15`,
+            warning: `${NAGIOS_URL}?host=all&servicestatustypes=4&hoststatustypes=15`,
+            unknown: `${NAGIOS_URL}?host=all&servicestatustypes=8&hoststatustypes=15`,
+            critical: `${NAGIOS_URL}?host=all&servicestatustypes=16&hoststatustypes=15`,
+            pending: `${NAGIOS_URL}?host=all&servicestatustypes=1&hoststatustypes=15`
+        };
+
+
+        /* ============================================================
+           UTILITY FUNCTIONS
+           ============================================================ */
+
+        /**
+         * Escape HTML-sensitive characters in dynamic values.
+         */
+        function escapeHtml(value) {
+            return String(value ?? '').replace(
+                /[&<>"']/g,
+                c => ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#039;'
+                }[c])
+            );
+        }
+
+
+        /**
+         * Convert a Unix timestamp into a localized date/time string.
+         */
+        function formatTime(timestamp) {
+            if (!timestamp) return '—';
+
+            const date = new Date(Number(timestamp) * 1000);
+
+            if (Number.isNaN(date.getTime())) return '—';
+
+            return date.toLocaleString(undefined, {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        }
+
+
+        /**
+         * Update a numeric status value and apply its CSS status class.
+         */
+        function setValue(id, value, statusClass) {
+            const el = document.getElementById(id);
+            const number = Number(value) || 0;
+
+            el.textContent = number.toLocaleString();
+            el.className = `status-value ${number === 0 ? 'value-zero' : statusClass}`;
+        }
+
+
+        /**
+         * Create an HTML badge for a Nagios host/service state.
+         */
+        function getStatusBadge(state) {
+            const value = String(state || 'UNKNOWN').toUpperCase();
+
+            let cls = 'badge-unknown';
+
+            if (value === 'CRITICAL' || value === 'DOWN') {
+                cls = 'badge-critical';
+            } else if (value === 'WARNING' || value === 'UNREACHABLE') {
+                cls = 'badge-warning';
+            }
+
+            return `<span class="badge-noc ${cls}">${escapeHtml(value)}</span>`;
+        }
+
+
+        /**
+         * Create an HTML badge identifying a host or service problem.
+         */
+        function getTypeBadge(type) {
+            const value = String(type || '').toLowerCase();
+
+            return `<span class="badge-noc ${value === 'host' ? 'badge-host' : 'badge-service'}">${escapeHtml(value || '—')}</span>`;
+        }
+
+
+        /**
+         * Create an HTML badge for a Nagios HARD/SOFT state.
+         */
+        function getStateTypeBadge(stateType) {
+            const value = String(stateType || '').toUpperCase();
+
+            return `<span class="badge-noc ${value === 'HARD' ? 'badge-hard' : 'badge-soft'}">${escapeHtml(value || '—')}</span>`;
+        }
+
+
+        /* ============================================================
+           AUTHENTICATION
+           ============================================================ */
+
+        /**
+         * Update the login button and authenticated-user indicator.
+         */
+        function updateAuthUI() {
+            const login = document.getElementById('login-button');
+            const user = document.getElementById('auth-user');
+
+            if (isAuthenticated) {
+                login.classList.add('d-none');
+                user.textContent = authenticatedUsername ? `USER · ${authenticatedUsername}` : 'AUTHENTICATED';
+                user.classList.remove('d-none');
+            } else {
+                login.classList.remove('d-none');
+                user.classList.add('d-none');
+            }
+        }
+
+
+        /**
+         * Check whether the current session is authenticated.
+         */
+        async function checkAuthentication() {
+            try {
+                const response = await fetch(`${AUTH_URL}?_=${Date.now()}`, {
+                    method: 'GET',
+                    credentials: 'same-origin',
+                    cache: 'no-store',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-NOC-AUTH-CHECK': '1'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+
+                    isAuthenticated = data.authenticated === true;
+                    authenticatedUsername = isAuthenticated ? (data.username || '') : '';
+                } else {
+                    isAuthenticated = false;
+                    authenticatedUsername = '';
+                }
+            } catch (error) {
+                isAuthenticated = false;
+                authenticatedUsername = '';
+            }
+
+            updateAuthUI();
+            renderProblems(currentProblems);
+        }
+
+
+        /* ============================================================
+           PROBLEM TABLE
+           ============================================================ */
+
+        /**
+         * Render the current list of unhandled Nagios problems.
+         */
+        function renderProblems(problems) {
+            currentProblems = Array.isArray(problems) ? problems : [];
+
+            document.getElementById('problem-count').textContent =
+                currentProblems.length.toLocaleString();
+
+            const container = document.getElementById('problems-container');
+            container.replaceChildren();
+
+            if (!currentProblems.length) {
+                const emptyState = document.createElement('div');
+                emptyState.className = 'empty-state';
+
+                const icon = document.createElement('div');
+                icon.className = 'empty-icon';
+                icon.textContent = '✓';
+
+                const text = document.createElement('div');
+                text.className = 'empty-text';
+                text.textContent = 'No unhandled problems';
+
+                emptyState.append(icon, text);
+                container.appendChild(emptyState);
+                return;
+            }
+
+            const table = document.createElement('table');
+            table.className = 'table noc-table';
+
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+
+            [
+                'Type',
+                'Host',
+                'Service',
+                'Status',
+                'State',
+                'Problem',
+                'Last Check',
+                'Action'
+            ].forEach(label => {
+                const th = document.createElement('th');
+                th.textContent = label;
+                headerRow.appendChild(th);
+            });
+
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            const tbody = document.createElement('tbody');
+
+            currentProblems.forEach((problem, index) => {
+                const row = document.createElement('tr');
+                const type = String(problem.type || '').toLowerCase();
+                const stateType = String(
+                    problem.state_type || problem.stateType || ''
+                ).toUpperCase();
+
+                const canAck = isAuthenticated && stateType === 'HARD';
+
+                // Type
+                const typeCell = document.createElement('td');
+                const typeBadge = document.createElement('span');
+                typeBadge.className = `badge-noc ${
+                    type === 'host' ? 'badge-host' : 'badge-service'
+                }`;
+                typeBadge.textContent = type || '—';
+                typeCell.appendChild(typeBadge);
+
+                // Host
+                const hostCell = document.createElement('td');
+                hostCell.className = 'host-cell';
+                hostCell.textContent = problem.host || '—';
+
+                // Service
+                const serviceCell = document.createElement('td');
+                serviceCell.className = 'service-cell';
+                serviceCell.textContent = problem.service || '—';
+
+                // Status
+                const statusCell = document.createElement('td');
+                const state = String(problem.state || 'UNKNOWN').toUpperCase();
+                const statusBadge = document.createElement('span');
+
+                let statusClass = 'badge-unknown';
+
+                if (state === 'CRITICAL' || state === 'DOWN') {
+                    statusClass = 'badge-critical';
+                } else if (state === 'WARNING' || state === 'UNREACHABLE') {
+                    statusClass = 'badge-warning';
+                }
+
+                statusBadge.className = `badge-noc ${statusClass}`;
+                statusBadge.textContent = state;
+                statusCell.appendChild(statusBadge);
+
+                // State type
+                const stateTypeCell = document.createElement('td');
+                const stateTypeBadge = document.createElement('span');
+
+                stateTypeBadge.className = `badge-noc ${
+                    stateType === 'HARD' ? 'badge-hard' : 'badge-soft'
+                }`;
+                stateTypeBadge.textContent = stateType || '—';
+
+                stateTypeCell.appendChild(stateTypeBadge);
+
+                // Problem message
+                const messageCell = document.createElement('td');
+                messageCell.className = 'message-cell';
+
+                const message = String(problem.message || '');
+                messageCell.textContent = message || '—';
+
+                if (message) {
+                    messageCell.title = message;
+                }
+
+                // Last check
+                const timeCell = document.createElement('td');
+                timeCell.className = 'time-cell';
+                timeCell.textContent = formatTime(problem.last_check);
+
+                // Action
+                const actionCell = document.createElement('td');
+                actionCell.className = 'action-cell';
+
+                if (canAck) {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'btn btn-ack';
+                    button.textContent = 'Acknowledge';
+                    button.dataset.ackIndex = String(index);
+
+                    button.addEventListener('click', () => {
+                        openAckModal(currentProblems[index]);
+                    });
+
+                    actionCell.appendChild(button);
+                } else {
+                    actionCell.textContent = '—';
+                }
+
+                row.append(
+                    typeCell,
+                    hostCell,
+                    serviceCell,
+                    statusCell,
+                    stateTypeCell,
+                    messageCell,
+                    timeCell,
+                    actionCell
+                );
+
+                tbody.appendChild(row);
+            });
+
+            table.appendChild(tbody);
+            container.appendChild(table);
+        }
+
+        /* ============================================================
+           CONNECTION STATUS
+           ============================================================ */
+
+        /**
+         * Update the connection indicator and display the API's
+         * generated_at timestamp when the connection is healthy.
+         */
+        function setConnectionStatus(connected, generatedAt) {
+            const dot = document.getElementById('connection-dot');
+            const text = document.getElementById('connection-text');
+
+            if (connected) {
+                dot.classList.remove('error');
+                dot.classList.remove('warning');
+
+                let updateTime = '';
+
+                if (generatedAt) {
+                    const date = new Date(Number(generatedAt) * 1000);
+
+                    if (!Number.isNaN(date.getTime())) {
+                        updateTime = date.toLocaleTimeString();
+                    }
+                }
+
+                text.textContent = updateTime ? `LIVE · Updated ${updateTime}` : 'LIVE';
+            } else {
+                dot.classList.add('error');
+                text.textContent = 'ERROR · Nagios API unavailable';
+            }
+        }
+
+
+        /* ============================================================
+           ACKNOWLEDGEMENT MODAL
+           ============================================================ */
+
+        /**
+         * Open the acknowledgement modal for an authenticated user
+         * when the selected problem is in HARD state.
+         */
+        function openAckModal(problem) {
+            if (!isAuthenticated || !problem) return;
+
+            const stateType = String(problem.state_type || problem.stateType || '').toUpperCase();
+
+            if (stateType !== 'HARD') return;
+
+            ackContext = problem;
+
+            document.getElementById('ack-target').textContent =
+                problem.type === 'host'
+                    ? `HOST · ${problem.host || '—'}`
+                    : `SERVICE · ${problem.host || '—'} / ${problem.service || '—'}`;
+
+            document.getElementById('ack-problem').textContent = problem.message || '';
+
+            const comment = document.getElementById('ack-comment');
+            const persistent = document.getElementById('ack-persistent');
+            const error = document.getElementById('ack-error');
+            const submit = document.getElementById('ack-submit');
+
+            comment.value = '';
+            persistent.checked = false;
+            error.textContent = '';
+            error.classList.add('d-none');
+
+            submit.disabled = false;
+            submit.textContent = 'Acknowledge';
+
+            ackModal.show();
+
+            setTimeout(() => comment.focus(), 200);
+        }
+
+
+        /**
+         * Display an acknowledgement error inside the modal.
+         */
+        function showAckError(message) {
+            const error = document.getElementById('ack-error');
+
+            error.textContent = message;
+            error.classList.remove('d-none');
+        }
+
+
+        /**
+         * Submit the acknowledgement request to the backend API.
+         */
+        async function submitAcknowledgement() {
+            if (!ackContext || !isAuthenticated) return;
+
+            const commentElement = document.getElementById('ack-comment');
+            const persistentElement = document.getElementById('ack-persistent');
+            const comment = commentElement.value.trim();
+            const persistent = persistentElement.checked;
+
+            if (!comment) {
+                showAckError('Please enter a comment.');
+                commentElement.focus();
+                return;
+            }
+
+            const submit = document.getElementById('ack-submit');
+
+            submit.disabled = true;
+            submit.textContent = 'Acknowledging...';
+
+            try {
+                const response = await fetch(ACK_URL, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    cache: 'no-store',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        type: ackContext.type,
+                        host: ackContext.host,
+                        service: ackContext.service || null,
+                        comment,
+                        persistent
+                    })
+                });
+
+                let data = {};
+
+                try {
+                    data = await response.json();
+                } catch (error) {
+                    // Response did not contain JSON.
+                }
+
+                if (response.status === 401) {
+                    throw new Error('Authentication required. Please log in again.');
+                }
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.error ||
+                        data.message ||
+                        `Acknowledgement failed (HTTP ${response.status}).`
+                    );
+                }
+
+                ackModal.hide();
+                ackContext = null;
+
+                setTimeout(loadNocStatus, 700);
+            } catch (error) {
+                showAckError(error.message || 'Acknowledgement failed.');
+
+                submit.disabled = false;
+                submit.textContent = 'Acknowledge';
+            }
+        }
+
+
+        /* ============================================================
+           NOC STATUS LOADING
+           ============================================================ */
+
+        /**
+         * Fetch the current NOC status, update counters and links,
+         * render unhandled problems, and update connection status.
+         */
+        async function loadNocStatus() {
+            try {
+                const response = await fetch(`${API_URL}?_=${Date.now()}`, {
+                    cache: 'no-store',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                document.getElementById('hostname').textContent = data.hostname || '—';
+
+                const hosts = data.hosts || {};
+                const services = data.services || {};
+
+                const hostTotal =
+                    (Number(hosts.up) || 0) +
+                    (Number(hosts.down) || 0) +
+                    (Number(hosts.unreachable) || 0) +
+                    (Number(hosts.pending) || 0);
+
+                const serviceTotal =
+                    (Number(services.ok) || 0) +
+                    (Number(services.warning) || 0) +
+                    (Number(services.unknown) || 0) +
+                    (Number(services.critical) || 0) +
+                    (Number(services.pending) || 0);
+
+                document.getElementById('host-total').textContent = hostTotal.toLocaleString();
+                document.getElementById('service-total').textContent = serviceTotal.toLocaleString();
+
+                setValue('host-up', hosts.up, 'value-up');
+                setValue('host-down', hosts.down, 'value-down');
+                setValue('host-unreachable', hosts.unreachable, 'value-unreachable');
+                setValue('host-pending', hosts.pending, 'value-pending');
+
+                setValue('service-ok', services.ok, 'value-ok');
+                setValue('service-warning', services.warning, 'value-warning');
+                setValue('service-unknown', services.unknown, 'value-unknown');
+                setValue('service-critical', services.critical, 'value-critical');
+                setValue('service-pending', services.pending, 'value-pending');
+
+                document.getElementById('host-up-link').href = hostLinks.up;
+                document.getElementById('host-down-link').href = hostLinks.down;
+                document.getElementById('host-unreachable-link').href = hostLinks.unreachable;
+                document.getElementById('host-pending-link').href = hostLinks.pending;
+
+                document.getElementById('service-ok-link').href = serviceLinks.ok;
+                document.getElementById('service-warning-link').href = serviceLinks.warning;
+                document.getElementById('service-unknown-link').href = serviceLinks.unknown;
+                document.getElementById('service-critical-link').href = serviceLinks.critical;
+                document.getElementById('service-pending-link').href = serviceLinks.pending;
+
+                renderProblems(data.unhandled || []);
+                setConnectionStatus(true, data.generated_at);
+            } catch (error) {
+                setConnectionStatus(false);
+            }
+
+            await checkAuthentication();
+        }
+
+
+        /* ============================================================
+           INITIALIZATION
+           ============================================================ */
+
+        /**
+         * Initialize the acknowledgement modal, load the initial
+         * NOC status, and start the 60-second refresh interval.
+         */
+        document.addEventListener('DOMContentLoaded', () => {
+            ackModal = new bootstrap.Modal(document.getElementById('ackModal'));
+
+            document.getElementById('ack-submit').addEventListener('click', submitAcknowledgement);
+
+            loadNocStatus();
+            setInterval(loadNocStatus, 60000);
+        });
+
+
+        /* ============================================================
+           AUTHENTICATION REFRESH EVENTS
+           ============================================================ */
+
+        /**
+         * Re-check authentication when the browser window receives focus.
+         */
+        window.addEventListener('focus', checkAuthentication);
+
+
+        /**
+         * Re-check authentication when the page becomes visible again.
+         */
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) checkAuthentication();
+        });
+    </script>
+</body>
+</html>
+

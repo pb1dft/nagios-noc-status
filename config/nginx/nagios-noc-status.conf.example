@@ -1,0 +1,30 @@
+server {
+    listen 80;
+    listen [::]:80;
+
+    server_name noc.example.com;
+
+    root /var/www/nagios-noc-status;
+    index index.html;
+
+    # Basic authentication for the entire NOC dashboard
+    auth_basic "Nagios NOC";
+    auth_basic_user_file /etc/nagios/htpasswd.users;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    # PHP API
+    location ~ \.php$ {
+        try_files $uri =404;
+
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+    }
+
+    # Never expose hidden files
+    location ~ /\. {
+        deny all;
+    }
+}

@@ -1,0 +1,40 @@
+<?php
+declare(strict_types=1);
+
+/*
+ * ================================================================
+ * NAGIOS NOC STATUS CONFIGURATION
+ * ================================================================
+ *
+ * Copy this file to:
+ *
+ *     api/config.php
+ *
+ * Then adjust the paths for your Nagios installation.
+ *
+ * Do NOT commit the real config.php to Git.
+ *
+ * ================================================================
+ */
+
+
+/* ================================================================
+ * NAGIOS FILES
+ * ================================================================ */
+
+/*
+ * Nagios status.dat file.
+ */
+define(
+    'NAGIOS_STATUS_FILE',
+    '/var/spool/nagios/status.dat'
+);
+
+
+/*
+ * Nagios external command pipe.
+ */
+define(
+    'NAGIOS_COMMAND_FILE',
+    '/var/spool/nagios/cmd/nagios.cmd'
+);
