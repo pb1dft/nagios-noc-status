@@ -13,7 +13,17 @@
         Require valid-user
     </Directory>
 
-    <Directory /var/www/nagios-noc-status/api>
+    <Directory /var/www/nagios-noc-status/api/noc-ack>
+        Options -Indexes
+        AllowOverride None
+
+        AuthType Basic
+        AuthName "Nagios NOC"
+        AuthUserFile /etc/nagios/htpasswd.users
+        Require valid-user
+    </Directory>
+
+    <Directory /var/www/nagios-noc-status/api/noc-recheck>
         Options -Indexes
         AllowOverride None
 

@@ -403,6 +403,22 @@
             color: #fff;
             background: rgba(255, 77, 90, .20);
         }
+        .btn-recheck {
+            color: #b9f3e1;
+            background: rgba(32, 201, 151, .08);
+            border: 1px solid rgba(32, 201, 151, .30);
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: .04em;
+            padding: 4px 7px;
+            border-radius: 4px;
+            margin-right: 4px;
+        }
+
+        .btn-recheck:hover {
+            color: #fff;
+            background: rgba(32, 201, 151, .18);
+        }
 
         .empty-state {
             height: 100%;
@@ -725,6 +741,7 @@
         const API_URL = '/api/noc-status/';
         const AUTH_URL = '/api/noc-auth/';
         const ACK_URL = '/api/noc-ack/';
+        const RECHECK_URL = '/api/noc-recheck/';
         const NAGIOS_URL = '/nagios/cgi-bin/status.cgi';
 
 
@@ -736,6 +753,7 @@
         let authenticatedUsername = '';
         let currentProblems = [];
         let ackContext = null;
+        let recheckInProgress = new Set();
         let ackModal = null;
 
 
@@ -974,6 +992,7 @@
                 ).toUpperCase();
 
                 const canAck = isAuthenticated && stateType === 'HARD';
+                const canRecheck = isAuthenticated && problem.state !== 'OK';
 
                 // Type
                 const typeCell = document.createElement('td');
@@ -1042,6 +1061,20 @@
                 const actionCell = document.createElement('td');
                 actionCell.className = 'action-cell';
 
+                if (canRecheck) {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'btn btn-recheck';
+                    button.textContent = recheckInProgress.has(index)
+                        ? 'Rechecking...'
+                        : 'Recheck';
+                    button.disabled = recheckInProgress.has(index);
+                    button.addEventListener('click', () => {
+                        recheckProblem(currentProblems[index], index);
+                    });
+                    actionCell.appendChild(button);
+                }
+
                 if (canAck) {
                     const button = document.createElement('button');
                     button.type = 'button';
@@ -1054,7 +1087,9 @@
                     });
 
                     actionCell.appendChild(button);
-                } else {
+                }
+
+                if (!canRecheck && !canAck) {
                     actionCell.textContent = '—';
                 }
 
@@ -1163,6 +1198,58 @@
             error.classList.remove('d-none');
         }
 
+        /**
+         * Force Nagios to immediately recheck an active host/service problem.
+         */
+        async function recheckProblem(problem, index) {
+            if (!isAuthenticated || !problem || recheckInProgress.has(index)) return;
+
+            recheckInProgress.add(index);
+            renderProblems(currentProblems);
+
+            try {
+                const response = await fetch(RECHECK_URL, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    cache: 'no-store',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        type: problem.type,
+                        host: problem.host,
+                        service: problem.service || null
+                    })
+                });
+
+                let data = {};
+
+                try {
+                    data = await response.json();
+                } catch (error) {
+                    // Response did not contain JSON.
+                }
+
+                if (response.status === 401) {
+                    throw new Error('Authentication required. Please log in again.');
+                }
+                if (!response.ok) {
+                    throw new Error(
+                        data.error ||
+                        data.message ||
+                        `Recheck failed (HTTP ${response.status}).`
+                    );
+                }
+
+                setTimeout(loadNocStatus, 700);
+            } catch (error) {
+                window.alert(error.message || 'Recheck failed.');
+            } finally {
+                recheckInProgress.delete(index);
+                renderProblems(currentProblems);
+            }
+        }
 
         /**
          * Submit the acknowledgement request to the backend API.

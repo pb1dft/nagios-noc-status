@@ -7,23 +7,72 @@ server {
     root /var/www/nagios-noc-status;
     index index.html;
 
-    # Basic authentication for the entire NOC dashboard
-    auth_basic "Nagios NOC";
-    auth_basic_user_file /etc/nagios/htpasswd.users;
+    # ------------------------------------------------------------
+    # Dashboard
+    # ------------------------------------------------------------
 
     location / {
         try_files $uri $uri/ =404;
     }
 
-    # PHP API
-    location ~ \.php$ {
-        try_files $uri =404;
+    # ------------------------------------------------------------
+    # Public API endpoints
+    # ------------------------------------------------------------
+
+    location = /api/noc-status/ {
+        try_files /api/noc-status/index.php =404;
 
         include snippets/fastcgi-php.conf;
+        fastcgi_param SCRIPT_FILENAME $document_root/api/noc-status/index.php;
         fastcgi_pass unix:/run/php/php8.2-fpm.sock;
     }
 
+    location = /api/noc-auth/ {
+        try_files /api/noc-auth/index.php =404;
+
+        include snippets/fastcgi-php.conf;
+        fastcgi_param SCRIPT_FILENAME $document_root/api/noc-auth/index.php;
+        fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+    }
+
+    # ------------------------------------------------------------
+    # Authenticated action APIs
+    # ------------------------------------------------------------
+
+    location = /api/noc-ack/ {
+        auth_basic "Nagios NOC";
+        auth_basic_user_file /etc/nagios/htpasswd.users;
+
+        try_files /api/noc-ack/index.php =404;
+
+        include snippets/fastcgi-php.conf;
+        fastcgi_param SCRIPT_FILENAME $document_root/api/noc-ack/index.php;
+        fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+    }
+
+    location = /api/noc-recheck/ {
+        auth_basic "Nagios NOC";
+        auth_basic_user_file /etc/nagios/htpasswd.users;
+
+        try_files /api/noc-recheck/index.php =404;
+
+        include snippets/fastcgi-php.conf;
+        fastcgi_param SCRIPT_FILENAME $document_root/api/noc-recheck/index.php;
+        fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+    }
+
+    # ------------------------------------------------------------
+    # Do NOT allow arbitrary PHP execution
+    # ------------------------------------------------------------
+
+    location ~ \.php$ {
+        return 404;
+    }
+
+    # ------------------------------------------------------------
     # Never expose hidden files
+    # ------------------------------------------------------------
+
     location ~ /\. {
         deny all;
     }
