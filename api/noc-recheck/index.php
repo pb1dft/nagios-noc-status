@@ -186,10 +186,10 @@ try {
     /* ============================================================
        BUILD NAGIOS COMMAND
 
-       SCHEDULE_SVC_CHECK:
+       SCHEDULE_FORCED_SVC_CHECK:
            host;service;check_time;force_check
 
-       SCHEDULE_HOST_CHECK:
+       SCHEDULE_FORCED_HOST_CHECK:
            host;check_time;force_check
 
        Using time() with force_check=1 makes this an immediate
@@ -200,7 +200,7 @@ try {
 
     if ($type === 'service') {
         $command = sprintf(
-            '[%d] SCHEDULE_SVC_CHECK;%s;%s;%d;1',
+            '[%d] SCHEDULE_FORCED_SVC_CHECK;%s;%s;%d;1',
             $timestamp,
             $host,
             $service,
@@ -208,7 +208,7 @@ try {
         );
     } else {
         $command = sprintf(
-            '[%d] SCHEDULE_HOST_CHECK;%s;%d;1',
+            '[%d] SCHEDULE_FORCED_HOST_CHECK;%s;%d;1',
             $timestamp,
             $host,
             $timestamp
